@@ -1,76 +1,28 @@
-const { Observable } = require("rxjs");
+const { Observable, pipe } = require("rxjs");
+const { filter, take, last } = require("rxjs/operators");
 
 function terminadoCom(parteFinal) {
-  return function (source$) {
-    return new Observable((subscriber) => {
-      source$.subscribe({
-        next(valor) {
-          if (Array.isArray(valor)) {
-            subscriber.next(valor.filter((el) => el.endsWith(parteFinal)));
-          } else if (typeof valor === "string") {
-            if (valor.endsWith(parteFinal)) {
-              subscriber.next(valor);
-            }
-          }
-        },
-        error(e) {
-          subscriber.error(e);
-        },
-        complete() {
-          subscriber.complete();
-        },
-      });
-    });
-  };
+  return pipe(
+    filter(texto => texto.endsWith(parteFinal))
+  );
 }
 
 function primeiro() {
-  return createPipeableOperator(subscriber => ({
-      next(valor) {
-        console.log("primeiro...");
-        subscriber.next(valor);
-        subscriber.complete();
-      },
-      complete() {
-      }
-    }));
+  return pipe(
+          take(1)
+  )
 }
 
-function nenhum() {
-    return createPipeableOperator(subscriber => ({
-        next: _ => { 
-            console.log("nenhum...");
-            subscriber.complete()
-        }
-      }));
+function nenhum(primeiraLetra) {
+  return pipe(
+          take(0)
+  )
 }
 
 const ultimo = () => {
-    let ultimo
-    return createPipeableOperator(subscriber => ({
-        next(valor) {
-          ultimo = valor
-        },
-        complete() {
-            if (ultimo !== undefined) {
-              subscriber.next(ultimo);
-            }
-            subscriber.complete();
-        }
-      }));
-}
-
-function createPipeableOperator(operatorFn) {
-  return function (source$) {
-    return new Observable((subscriber) => {
-    let sub = operatorFn(subscriber)
-      source$.subscribe({
-        next: sub.next,
-        error: sub.error || (e => subscriber.error(e)),
-        complete: sub.complete || (() => subscriber.complete())
-    });
-    });
-  };
+    return pipe(
+      last()
+    )
 }
 
 module.exports = {

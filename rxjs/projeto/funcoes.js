@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
-const { Observable } = require("rxjs");
+const { Observable, pipe } = require("rxjs");
+const { filter, switchMap, map  } = require("rxjs/operators");
 
 function lerDiretorio(caminho) {
   return new Observable((subscriber) => {
@@ -16,61 +17,43 @@ function lerDiretorio(caminho) {
 }
 
 function terminadoCom(parteFinal) {
-  return createPipeableOperator((subscriber) => ({
-    next(caminho) {
-      if (caminho.endsWith(parteFinal)) {
-        subscriber.next(caminho);
-      }
-    },
-  }));
+  return pipe(
+    filter(caminho => caminho.endsWith(parteFinal))
+  )
 }
 
 function lerArquivo() {
-  return createPipeableOperator((subscriber) => ({
-    next(caminho) {
-      try {
-        const conteudo = fs.readFileSync(caminho, { encoding: "utf-8" });
-        subscriber.next(conteudo);
-      } catch (e) {
-        console.log(`deu ruim ${e}`)
-        subscriber.error(e);
-      }
-    },
-  }));
+  return pipe (
+    map(caminho => fs.readFileSync(caminho, { encoding: "utf-8" })
+    )
+  )
 }
 
-function separarTextoPor(simbolo){
-    return createPipeableOperator((subscriber) => ({
-        next(texto){
-            texto.split(simbolo).forEach(parte => subscriber.next(parte))
-        }
-    }))
+function separarTextoPor(simbolo) {
+  return pipe (
+    switchMap(texto => texto.split(simbolo))
+  )
 }
 
-function agruparElementos(){
-    return createPipeableOperator((subscriber) => ({
-        next(palavras){
-            const agrupado = Object.values(palavras.reduce((acc, palavra) => {
-                const el = palavra.toLowerCase()
-                const qtde = acc[el] ? acc[el].qtde + 1 : 1
-                acc[el] = { elemento: el, qtde }
-                return acc
-            }, {}))
-            subscriber.next(agrupado)
-        }
-    }))
+function agruparElementos() {
+  return pipe(
+    map(palavras => {
+      return Object.values(
+        palavras.reduce((acc, palavra) => {
+          const el = palavra.toLowerCase();
+          const qtde = acc[el] ? acc[el].qtde + 1 : 1;
+          acc[el] = { elemento: el, qtde };
+          return acc;
+        }, {})
+      );
+    })
+  );
 }
 
-function removerElementosSeVazio(){
-    return createPipeableOperator((subscriber) => ({
-        next(texto){
-            if(texto.trim()){
-                subscriber.next(texto)
-            }
-        }
-    }))
+function removerElementosSeVazio() {
+  return pipe(filter((texto) => texto.trim()));
 }
-
+/*
 function createPipeableOperator(operatorFn) {
   return function (source$) {
     return new Observable((subscriber) => {
@@ -83,20 +66,17 @@ function createPipeableOperator(operatorFn) {
     });
   };
 }
+*/
 
-function removerSimbolos(simbolos){
-    return createPipeableOperator((subscriber) => ({
-        next(texto){
-            const textoSemSimbolos = simbolos.reduce((acc, simbolo) => {
-                return acc.split(simbolo).join("")
-            }, texto)
-            subscriber.next(textoSemSimbolos)
-        }
-    }))
-    
+function removerSimbolos(simbolos) {
+  return pipe(
+    map((texto) =>
+      simbolos.reduce((acc, simbolo) => {
+        return acc.split(simbolo).join("");
+      }, texto)
+    )
+  );
 }
-
-
 
 module.exports = {
   lerDiretorio,
@@ -105,6 +85,5 @@ module.exports = {
   separarTextoPor,
   removerElementosSeVazio,
   removerSimbolos,
-  agruparElementos
-
+  agruparElementos,
 };
